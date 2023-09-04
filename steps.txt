@@ -1,0 +1,17 @@
+Some stuff to help me keep track of what I'm doing and what the steps are, these aren't meant to be instructions for whoever is reading this.
+
+COMPILE ASSEMBLY TO OBJECT FOR WINDOWS (64 bit WINDOWS 10)
+    nasm -f win64 -o [out_file].obj [in_file].asm
+
+LINK OBJECT FILE WITH NECESSARY LIBRARIES TO CREATE EXE 
+!!DO THIS IN x64 CMD (x64 Native Tools Command Promt for VS 2022)!!
+??FIGURE OUT HOW TO DO THIS AUTOMATICALLY OR HAVE IT ALWAYS USE 64 BIT SOMEHOW (in VS Code)??
+    link [in_file].obj /subsystem:console /out:[out_file].exe kernel32.lib legacy_stdio_definitions.lib msvcrt.lib
+
+cargo run
+cargo build
+
+lazuli <path>
+
+CHANGE TO RELEASE, FOR NOW DEBUG
+    Add path to lazuli.exe to just run lazuli as command (only once)
