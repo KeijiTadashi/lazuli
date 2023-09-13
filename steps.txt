@@ -15,3 +15,16 @@ lazuli <path>
 
 CHANGE TO RELEASE, FOR NOW DEBUG
     Add path to lazuli.exe to just run lazuli as command (only once)
+
+
+CURRENT STEPS:
+cd to .\lazuli
+cargo build
+lazuli .\src\test_lzl\lazuli_test.lzl
+.\src\test_lzl\lazuli_test.exe
+$LASTEXITCODE
+
+cargo build; lazuli .\src\test_lzl\lazuli_test.lzl; .\src\test_lzl\lazuli_test.exe; $LASTEXITCODE
+
+OR RUN 
+.\build_run.bat

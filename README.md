@@ -10,7 +10,10 @@ Windows 10 x64
 
 # Stuff
 
-Lazuli will exit with 47 if everthing went well, this is because 47 is the quintessential random number (which now that it is a thing, just google it, will probably only occur more often as a "random" number) and has since (the tv series Fringe, thanks J.J. Abrams) become my favourite number. <br/>
+This project is inspired by a video I saw on youtube from Pixeled (Let's create a compiler (Pt.1))<br/>
+&nbsp; Youtube: https://www.youtube.com/playlist?list=PLUDlas_Zy_qC7c5tCgTMYq2idyyT241qs (Creating a compiler playlist) <br/>
+&nbsp; Github: https://github.com/orosmatthew/hydrogen-cpp/tree/master<br/>
+Lazuli will exit with 47 if everthing went well, this is because 47 is the quintessential random number (which now that it is a thing, just google it, will probably only occur more often as a "random" number) and has (since the tv series Fringe, thanks J.J. Abrams) become my favourite number. <br/>
 There will be random comments for a while as quick references while I learn Rust and Assembly, that will eventually be removed.
 
 # WIP

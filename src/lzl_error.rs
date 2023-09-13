@@ -1,6 +1,8 @@
 // https://man.freebsd.org/cgi/man.cgi?query=sysexits&apropos=0&sektion=0&manpath=FreeBSD+11.2-stable&arch=default&format=html
 // exitcodes for std::process::exit are unsigned 8 bit integers
 
+// TODO give better name than global
+
 use colored::Colorize;
 
 pub struct LazuliCompileError<'a> {
