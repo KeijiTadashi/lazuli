@@ -1,2 +1,5 @@
 target/
-#/testing_stuff #Remove later
+/testing_stuff
+*.asm
+*.obj
+*.exe
