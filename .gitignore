@@ -1,5 +1,9 @@
 target/
-/testing_stuff
+testing_stuff/
 *.asm
 *.obj
 *.exe
+
+docs/*
+!*.pdf
+!*.tex

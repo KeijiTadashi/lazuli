@@ -1,101 +1,178 @@
-use std::fs::File;
-use std::io::prelude::*;
-use std::process::Command;
+use crate::{
+    global::{printd, DebugType},
+    lzl_error::{print_error, WEIRD_ERROR},
+    nodes::*,
+    tokens::{
+        Token,
+        TokenType::{self, *},
+    },
+};
 
-use crate::lzl_error::*;
-use crate::tokens::*;
+pub struct Parser {
+    tokens: Vec<Token>,
+    // length: usize,
+}
 
-pub fn parse(tokens: Vec<Token>, filename: String) -> Result<u8, u8> {
-    let l = tokens.len();
-    let mut f: String = "".to_string();
-    // 6 space tabs, t3 for 3 letter commands "mov...", t4 for 4 letter "call.."
-    const TAB: &str = "      ";
-    const S3: &str = "   ";
-    const S4: &str = "  ";
+impl Parser {
+    pub fn new(tokens: Vec<Token>) -> Parser {
+        Parser {
+            // length: tokens.len(),
+            tokens,
+        }
+    }
 
-    // asm setup
-    f.push_str("; Compiled using the Lazuli compiler for Lazuli.... stuff\n");
-    f.push_str("BITS 64\nDEFAULT REL\n\nsegment .text\nglobal main\nextern ExitProcess\n\nmain:\n"); // default doc: https://www.nasm.us/xdoc/2.13.02rc2/html/nasmdoc6.html (don't really know the difference right now TODO)
+    pub fn parse(self: &'_ mut Self) -> Result<NodeProg, u8> {
+        let mut prog: NodeProg = NodeProg::new();
+        printd("Started parse".to_owned(), DebugType::MESSAGE);
+        while self.peek().is_some() {
+            printd(
+                format!("Peek in prog: {:?}", self.peek()),
+                DebugType::MESSAGE,
+            );
+            let stmt = self.parse_stmt();
+            match stmt {
+                Ok(n) => prog.stmts.push(n),
+                Err(e) => return Err(e),
+            }
+        }
+        // printd(
+        //     format!(
+        //         "tokens: {:?}\n peek: {:?}\npeek ahead 1: {:?}\npeek again: {:?}",
+        //         self.tokens,
+        //         self.peek(),
+        //         self.peek_ahead(1),
+        //         self.peek()
+        //     ),
+        //     DebugType::MESSAGE,
+        // );
+        // let tempnextstuffname = self.next();
+        // printd(
+        //     format!(
+        //         "next: {:?}\npeek: {:?}\ntokens: {:?}",
+        //         tempnextstuffname,
+        //         self.peek(),
+        //         self.tokens
+        //     ),
+        //     DebugType::MESSAGE,
+        // );
 
-    let mut i: usize = 0;
+        return Ok(prog);
+    }
 
-    while i < l {
-        let t: &Token = &tokens[i];
-        println!("I: {} => t: {:?}", i, t);
-        if matches!(t.t_type, TokenType::RETURN) {
-            if i + 1 < l && matches!(&tokens[i + 1].t_type, TokenType::INT) {
-                if i + 2 < l && matches!(&tokens[i + 2].t_type, TokenType::SEMI) {
-                    // create return in asm
-                    f.push_str(&format!(
-                        "{}mov{}ecx, {}\n{}call{}ExitProcess\n",
-                        TAB,
-                        S3,
-                        tokens[i + 1].value.as_ref().unwrap(),
-                        TAB,
-                        S4
-                    ));
-                    i += 2;
+    fn parse_stmt(self: &'_ mut Self) -> Result<NodeStmt, u8> {
+        let mut stmt = NodeStmt::new();
+
+        if let Some(peeked) = self.peek() {
+            printd(
+                format!("Peek in stmt: {:?}", peeked),
+                crate::global::DebugType::MESSAGE,
+            );
+            if peeked.t_type == T_RETURN {
+                self.next();
+                let mut stmt_ret = NodeStmtRet::new();
+                match self.parse_expr() {
+                    Ok(n) => stmt_ret.expr = n,
+                    Err(e) => return Err(e),
+                }
+                match self.try_next(T_SEMI) {
+                    Some(t) => {
+                        stmt.var = VarStmt::RET(stmt_ret);
+                        return Ok(stmt);
+                    }
+                    None => {
+                        return Err(print_error(
+                            Some(WEIRD_ERROR),
+                            Some("Expected ';' after 'ret [expr]'".to_owned()),
+                        ))
+                    }
                 }
             }
         } else {
             return Err(print_error(
-                WEIRD_ERROR,
-                Some("Only \"ret ##;\" works for now".to_owned()),
+                Some(WEIRD_ERROR),
+                Some("No token at stmt".to_owned()),
             ));
         }
-        i += 1;
+
+        return Ok(stmt);
     }
 
-    // write string to file
+    fn parse_expr(self: &'_ mut Self) -> Result<NodeExpr, u8> {
+        let mut term_lhs = self.parse_term();
+        let mut expr_lhs = NodeExpr::new();
 
-    let mut file = File::create(format!("{}.asm", filename)).expect("Failed to create .asm file");
-    file.write_all(f.as_bytes())
-        .expect("Couldn't write to .asm file");
-    file.flush().expect("Couldn't flush .asm file"); // can probably not use flush from what I found, but for now let's keep it here so stuff doesn't break TODO
+        printd(
+            format!("expr: {:?}||term_lhs: {:?}", self.peek(), term_lhs),
+            crate::global::DebugType::MESSAGE,
+        );
+        match term_lhs {
+            Err(e) => return Err(e),
+            Ok(n) => expr_lhs.var = VarExpr::TERM(n),
+        }
+        // loop {
 
-    // nasm -f win64 -o hello_world.obj hello_world.asm
-    let run_nasm = Command::new("cmd")
-        .args([
-            "/C",
-            "nasm",
-            "-f",
-            "win64",
-            "-o",
-            &format!("{}.obj", filename),
-            &format!("{}.asm", filename),
-        ])
-        .output();
+        // }
 
-    if run_nasm.is_err() {
+        return Ok(expr_lhs);
+
+        // if let Some(peeked) = self.peek() {
+        //     return Ok(self.parse_term());
+        // } else {
+        //     return Err(print_error(
+        //         Some(WEIRD_ERROR),
+        //         Some("No token at expr".to_owned()),
+        //     ));
+        // }
+    }
+
+    fn parse_term(self: &'_ mut Self) -> Result<NodeTerm, u8> {
+        let mut term = NodeTerm::new();
+        // if let Some(peeked) = self.peek() {
+        //     if
+        // }
+        printd(
+            format!("Parse Term, peek: {:?}", self.peek()),
+            crate::global::DebugType::MESSAGE,
+        );
+        if let Some(int_lit) = self.try_next(T_INT) {
+            let mut term_int_lit = NodeTermInt::new();
+            term_int_lit.value = int_lit.value.unwrap();
+            term.var = VarTerm::INT_LIT(term_int_lit);
+            return Ok(term);
+        }
         return Err(print_error(
-            WEIRD_ERROR,
-            Some("Couldn't create .obj file from .asm".to_owned()),
+            Some(WEIRD_ERROR),
+            Some("Didn't find term".to_owned()),
         ));
     }
 
-    // link hello_world.obj /subsystem:console /out:hello_world_basic.exe kernel32.lib legacy_stdio_definitions.lib msvcrt.lib
-    let run_link = Command::new("cmd")
-        .args([
-            "/C",
-            "call",
-            "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat",
-            "&&",
-            "link",
-            &format!("{}.obj", filename),
-            "/subsystem:console",
-            &format!("/out:{}.exe", filename),
-            "kernel32.lib",
-            "legacy_stdio_definitions.lib",
-            "msvcrt.lib",
-        ])
-        .output();
-
-    if run_link.is_err() {
-        return Err(print_error(
-            WEIRD_ERROR,
-            Some("Couldn't create .exe file from .obj".to_owned()),
-        ));
+    fn peek(&self) -> Option<&Token> {
+        if self.tokens.len() <= 0 {
+            return None;
+        }
+        return Some(&self.tokens[self.tokens.len() - 1]);
     }
 
-    return Ok(EXIT_SUCCES);
+    fn peek_ahead(&self, ahead: usize) -> Option<&Token> {
+        if self.tokens.len() <= ahead {
+            return None;
+        }
+        return Some(&self.tokens[self.tokens.len() - ahead - 1]);
+    }
+
+    fn next(self: &'_ mut Self) -> Option<Token> {
+        if let Some(t) = self.tokens.pop() {
+            return Some(t);
+        }
+        return None;
+    }
+
+    fn try_next(self: &'_ mut Self, token_type: TokenType) -> Option<Token> {
+        if let Some(t) = self.peek() {
+            if t.t_type == token_type {
+                return self.next();
+            }
+        }
+        return None;
+    }
 }

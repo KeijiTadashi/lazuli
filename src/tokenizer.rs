@@ -1,4 +1,5 @@
 use std::fs;
+use std::rc::Rc;
 
 use colored::Colorize;
 use itertools::Itertools;
@@ -42,12 +43,12 @@ impl LzlFile {
     }
 }
 
-pub fn tokenize(path_to_file: String) -> Result<Vec<Token>, u8> {
+pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
     let mut tokens: Vec<Token> = vec![];
 
     if !path_to_file.ends_with(".lzl") {
         return Err(print_error(
-            INVALID_ARGUMENT,
+            Some(INVALID_ARGUMENT),
             Some(format!(
                 "Input file doesn't end with .lzl\nFile:\t{}",
                 path_to_file,
@@ -55,7 +56,7 @@ pub fn tokenize(path_to_file: String) -> Result<Vec<Token>, u8> {
         ));
     }
 
-    let contents = fs::read_to_string(path_to_file);
+    let contents = fs::read_to_string(path_to_file.to_string());
     let mut cont: LzlFile;
     match contents {
         Ok(c) => {
@@ -63,7 +64,7 @@ pub fn tokenize(path_to_file: String) -> Result<Vec<Token>, u8> {
         }
         Err(e) => {
             return Err(print_error(
-                INVALID_ARGUMENT,
+                Some(INVALID_ARGUMENT),
                 Some(format!("{}\n## {} ##", "Couldn't read file".red(), e)),
             ));
         }
@@ -87,12 +88,12 @@ pub fn tokenize(path_to_file: String) -> Result<Vec<Token>, u8> {
             // TODO: Maybe use match or switch case
             if syntax == RETURN.syntax {
                 tokens.push(Token {
-                    t_type: TokenType::RETURN,
+                    t_type: TokenType::T_RETURN,
                     value: None,
                 })
             } else {
                 return Err(print_error(
-                    WEIRD_ERROR,
+                    Some(WEIRD_ERROR),
                     Some(format!(
                         "undefined syntax (which should have been read as an identifier): {}",
                         syntax
@@ -111,14 +112,14 @@ pub fn tokenize(path_to_file: String) -> Result<Vec<Token>, u8> {
             }
 
             tokens.push(Token {
-                t_type: TokenType::INT,
+                t_type: TokenType::T_INT,
                 value: Some(syntax.clone()),
             })
         } else {
             syntax.push(c);
             if syntax == LINEEND.syntax {
                 tokens.push(Token {
-                    t_type: TokenType::SEMI,
+                    t_type: TokenType::T_SEMI,
                     value: None,
                 });
             }

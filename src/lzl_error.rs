@@ -5,20 +5,19 @@
 
 use colored::Colorize;
 
+pub const EXIT_SUCCES: u8 = 47; // see README for reasoning
 pub struct LazuliCompileError<'a> {
     pub code: u8,
     pub name: &'a str,
 }
 
+// Standard(ish) error codes
 pub const INVALID_ARGUMENT: LazuliCompileError = LazuliCompileError {
     code: 22,
     name: "Invalid argument",
 };
 
-pub const EXIT_SUCCES: u8 = 47; // see README for reasoning
-
-// pub const INVALID_AGUMENT: u8 = 22;
-
+// Custom Lazuli error codes
 pub const MISSING_ARGUMENT: LazuliCompileError = LazuliCompileError {
     code: 1,
     name: "Missing argument",
@@ -29,17 +28,15 @@ pub const WEIRD_ERROR: LazuliCompileError = LazuliCompileError {
     name: "Weird (or undefined) error",
 };
 
-pub fn print_error(e: LazuliCompileError, error_message: Option<String>) -> u8 {
+pub fn print_error(error: Option<LazuliCompileError>, error_message: Option<String>) -> u8 {
+    let e = error.unwrap_or(WEIRD_ERROR);
     eprintln!(
-        "{}{} {} {}{}\n\t{}\n",
-        "E".red(),
-        e.code.to_string().red(),
-        "-",
-        e.name.red(),
-        ":",
+        "{}\n\t{}",
+        format!("E{} - {}:", e.code.to_string(), e.name.to_string()).bright_red(),
         error_message
             .unwrap_or(String::from("No error message"))
             .replace('\n', "\n\t")
+            .bright_white()
     );
     return e.code;
 }
