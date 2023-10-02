@@ -1,4 +1,5 @@
-use std::default;
+#![allow(non_camel_case_types)]
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct NodeProg {
@@ -23,11 +24,6 @@ pub enum VarStmt {
 #[derive(Debug)]
 pub struct NodeStmt {
     pub var: VarStmt,
-    // pub fn parse_stmt(){
-    //     match var {
-    //         RET(n) =>
-    //     }
-    // }
 }
 
 impl NodeStmt {
@@ -53,7 +49,19 @@ impl NodeStmtRet {
 
 #[derive(Debug)]
 pub struct NodeStmtAssign {
+    pub var_type: Rc<NodeType>,
+    pub ident: String,
     pub expr: NodeExpr,
+}
+
+impl NodeStmtAssign {
+    pub fn new() -> NodeStmtAssign {
+        NodeStmtAssign {
+            var_type: Default::default(),
+            ident: String::new(),
+            expr: NodeExpr::new(),
+        }
+    }
 }
 
 #[derive(Default, Debug)]
@@ -80,7 +88,8 @@ impl NodeExpr {
 pub enum VarTerm {
     #[default]
     NONE,
-    INT_LIT(NodeTermInt),
+    INT_LIT(NodeTermIntLit),
+    IDENT(NodeTermIdent),
 }
 
 #[derive(Debug)]
@@ -97,17 +106,57 @@ impl NodeTerm {
 }
 
 #[derive(Debug)]
-pub struct NodeTermInt {
+pub struct NodeTermIntLit {
     pub value: String,
 }
 
-impl NodeTermInt {
-    pub fn new() -> NodeTermInt {
-        NodeTermInt {
+impl NodeTermIntLit {
+    pub fn new() -> NodeTermIntLit {
+        NodeTermIntLit {
             value: Default::default(),
         }
     }
 }
+
+#[derive(Debug)]
+pub struct NodeTermIdent {
+    pub ident: String,
+}
+
+impl NodeTermIdent {
+    pub fn new() -> NodeTermIdent {
+        NodeTermIdent {
+            ident: String::new(),
+        }
+    }
+}
+
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum NodeType {
+    #[default]
+    NONE,
+    N_INT,
+}
+
+// #[derive(Debug)]
+// pub struct NodeType {
+//     pub var: VarType,
+//     pub value: String,
+// }
+
+// impl NodeType {
+//     pub fn new() -> NodeType {
+//         NodeType {
+//             var: Default::default(),
+//             value: String::new(),
+//         }
+//     }
+// }
+
+// #[derive(Debug)]
+// pub struct TypeInt {
+//     pub
+// }
 
 // pub struct NodeStmt {
 //     NodeStmtRet,

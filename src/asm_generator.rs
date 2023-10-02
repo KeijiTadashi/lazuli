@@ -1,14 +1,38 @@
-use std::{fs::File, io::Write};
+use std::{fs::File, io::Write, rc::Rc};
 
-use crate::{global::*, nodes::*};
+use crate::{
+    global::*,
+    lzl_error::{print_error, EXIT_SUCCES, WEIRD_ERROR},
+    nodes::*,
+};
+
+/// location in bytes (smallest typing is 1 byte long) INCORRECT NOW 8 BYTES
+// struct Var<'a> {
+//     var_type: &'a NodeType,
+//     ident: &'a String,
+#[derive(Debug)]
+struct Var {
+    var_type: Rc<NodeType>,
+    ident: String,
+    stack_loc: u16, // 65535 Bytes in max stack size NO LONGER CORRECT
+}
 
 pub struct AsmGenerator {
     out: String,
+    vars: Vec<Var>,
+    // vars: Vec<Var<'a>>,
+    exit_code: u8,
+    stack_size: u16,
 }
 
 impl AsmGenerator {
     pub fn new() -> AsmGenerator {
-        return AsmGenerator { out: String::new() };
+        return AsmGenerator {
+            out: String::new(),
+            vars: vec![],
+            exit_code: EXIT_SUCCES,
+            stack_size: 0,
+        };
     }
     // 6 space tabs, t3 for 3 letter commands "mov...", t4 for 4 letter "call.."
     // const TAB: &str = "      ";
@@ -33,7 +57,10 @@ impl AsmGenerator {
 
         printd(format!("Created {}.asm", filename), DebugType::CREATE);
 
-        return Ok(());
+        if self.exit_code == EXIT_SUCCES {
+            return Ok(());
+        }
+        return Err(self.exit_code);
     }
 
     fn gen_prog(&mut self, prog: NodeProg) {
@@ -48,26 +75,64 @@ impl AsmGenerator {
         for stmt in prog.stmts.iter() {
             self.gen_stmt(stmt);
             // print!("{:?}", stmt);
+            if self.exit_code != EXIT_SUCCES {
+                break;
+            }
         }
     }
 
     fn gen_stmt(&mut self, stmt: &NodeStmt) {
         match &stmt.var {
             VarStmt::NONE => todo!(),
-            VarStmt::RET(VarStmt) => {
-                self.gen_expr(&VarStmt.expr);
+            VarStmt::RET(var_stmt) => {
+                self.gen_expr(&var_stmt.expr);
                 self.pop("rax");
                 self.push_out("mov", "rcx, rax");
                 self.push_out("call", "ExitProcess")
             }
-            VarStmt::ASSIGN(_) => todo!(),
+            // TODO move assignment to own node with own gen_assign
+            VarStmt::ASSIGN(var_stmt) => {
+                let var = self.vars.iter_mut().find(|v| v.ident == var_stmt.ident);
+
+                if var_stmt.var_type == NodeType::NONE.into() {
+                    match var {
+                        Some(v) => v.stack_loc = self.stack_size,
+                        None => {self.exit_code = print_error(
+                            Some(WEIRD_ERROR),
+                            Some(format!(
+                                "A variable with name: \"{}\" has not yet been assigned, and therefore has no type",
+                                var_stmt.ident
+                            )),
+                        )},
+                    }
+                } else {
+                    match var {
+                        Some(_) => {
+                            self.exit_code = print_error(
+                                Some(WEIRD_ERROR),
+                                Some(format!(
+                                    "A variable with name: \"{}\" has already been assigned.",
+                                    var_stmt.ident
+                                )),
+                            )
+                        }
+                        None => self.vars.push(Var {
+                            var_type: var_stmt.var_type.clone(),
+                            ident: var_stmt.ident.to_owned(),
+                            stack_loc: self.stack_size,
+                        }),
+                    }
+                }
+
+                self.gen_expr(&var_stmt.expr);
+            }
         }
     }
 
     fn gen_expr(&mut self, expr: &NodeExpr) {
         match &expr.var {
             VarExpr::NONE => todo!(),
-            VarExpr::TERM(VarExpr) => self.gen_term(&VarExpr),
+            VarExpr::TERM(var_expr) => self.gen_term(&var_expr),
         }
     }
 
@@ -78,6 +143,24 @@ impl AsmGenerator {
                 self.push_out("mov", format!("rax, {}", int_lit.value).as_str());
                 self.push("rax");
             }
+            VarTerm::IDENT(ident) => {
+                let var = self.vars.iter().find(|&v| v.ident == ident.ident);
+                match var {
+                    Some(v) => self.push(&format!(
+                        "QWORD [rsp + {}]",
+                        (self.stack_size - v.stack_loc - 1) * 8
+                    )),
+                    None => {
+                        self.exit_code = print_error(
+                            Some(WEIRD_ERROR),
+                            Some(format!(
+                                "No variable declared with name: \"{}\".",
+                                ident.ident
+                            )),
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -86,11 +169,15 @@ impl AsmGenerator {
             .push_str(format!("      {:<6}{}\n", instruction, operation).as_str());
     }
 
+    /// TODO for now only 64 bit registers else stuff probably breaks in multiple places
     fn push(&mut self, register: &str) {
         self.push_out("push", register);
+        self.stack_size += 1; // 8 bytes (64 bit register)
     }
 
+    /// TODO for now only 64 bit registers else stuff probably breaks in multiple places
     fn pop(&mut self, register: &str) {
         self.push_out("pop", register);
+        self.stack_size -= 1;
     }
 }

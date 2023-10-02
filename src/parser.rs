@@ -75,9 +75,8 @@ impl Parser {
                     Err(e) => return Err(e),
                 }
                 match self.try_next(T_SEMI) {
-                    Some(t) => {
+                    Some(_) => {
                         stmt.var = VarStmt::RET(stmt_ret);
-                        return Ok(stmt);
                     }
                     None => {
                         return Err(print_error(
@@ -86,6 +85,89 @@ impl Parser {
                         ))
                     }
                 }
+            } else if peeked.t_type == T_INT {
+                self.next();
+                let mut stmt_int = NodeStmtAssign::new();
+                stmt_int.var_type = NodeType::N_INT.into();
+                match self.try_next(T_IDENT) {
+                    Some(t) => {
+                        match t.value {
+                            Some(ident) => stmt_int.ident = ident,
+                            None => return Err(print_error(Some(WEIRD_ERROR), Some(format!("Identifier token should have a value {:?}, should never reach this error.", t)))),
+                        };
+                    }
+                    None => todo!(), //expected identifier
+                };
+                match self.try_next(T_EQ) {
+                    Some(_) => (),
+                    None => return Err(print_error(Some(WEIRD_ERROR), Some(format!("Expected '=' after identifier \"{}\", all variables need to be initialized with a value.", stmt_int.ident)))),
+                }
+                let mut i: usize = 0;
+                while let Some(term) = self.peek_ahead(i) {
+                    if ![T_INT_LIT, T_IDENT, T_PLUS, T_MINUS, T_FSLASH, T_STAR]
+                        .contains(&term.t_type)
+                    {
+                        if T_SEMI == term.t_type {
+                            break;
+                        }
+                        return Err(print_error(
+                            Some(WEIRD_ERROR),
+                            Some(format!(
+                                "\"{}\" is of type int and \"{:?}\" is not valid here",
+                                stmt_int.ident, term
+                            )),
+                        ));
+                    }
+                    i += 1;
+                }
+                match self.parse_expr() {
+                    Ok(n) => {
+                        stmt_int.expr = n;
+                    }
+                    Err(e) => return Err(e),
+                };
+                match self.try_next(T_SEMI) {
+                    Some(_) => {
+                        stmt.var = VarStmt::ASSIGN(stmt_int);
+                    }
+                    None => {
+                        return Err(print_error(
+                            Some(WEIRD_ERROR),
+                            Some("Expected ';' after 'int {{name}} = [expr]'".to_owned()),
+                        ))
+                    }
+                }
+            } else if peeked.t_type == T_IDENT {
+                let mut stmt_ident = NodeStmtAssign::new();
+                stmt_ident.ident = self.next().unwrap().value.unwrap();
+                match self.try_next(T_EQ) {
+                    Some(_) => (),
+                    None => return Err(print_error(Some(WEIRD_ERROR), Some(format!("Expected '=' after identifier \"{}\", all variables need to be initialized with a value.", stmt_ident.ident)))),
+                }
+                // TODO type checking of expression and variable type
+
+                match self.parse_expr() {
+                    Ok(n) => {
+                        stmt_ident.expr = n;
+                    }
+                    Err(e) => return Err(e),
+                };
+                match self.try_next(T_SEMI) {
+                    Some(_) => {
+                        stmt.var = VarStmt::ASSIGN(stmt_ident);
+                    }
+                    None => {
+                        return Err(print_error(
+                            Some(WEIRD_ERROR),
+                            Some("Expected ';' after 'int {{name}} = [expr]'".to_owned()),
+                        ))
+                    }
+                }
+            } else {
+                return Err(print_error(
+                    Some(WEIRD_ERROR),
+                    Some(format!("Unknown stmt: {:?}", peeked)),
+                ));
             }
         } else {
             return Err(print_error(
@@ -134,16 +216,21 @@ impl Parser {
             format!("Parse Term, peek: {:?}", self.peek()),
             crate::global::DebugType::MESSAGE,
         );
-        if let Some(int_lit) = self.try_next(T_INT) {
-            let mut term_int_lit = NodeTermInt::new();
+        if let Some(int_lit) = self.try_next(T_INT_LIT) {
+            let mut term_int_lit = NodeTermIntLit::new();
             term_int_lit.value = int_lit.value.unwrap();
             term.var = VarTerm::INT_LIT(term_int_lit);
-            return Ok(term);
+        } else if let Some(ident) = self.try_next(T_IDENT) {
+            let mut term_ident = NodeTermIdent::new();
+            term_ident.ident = ident.value.unwrap();
+            term.var = VarTerm::IDENT(term_ident);
+        } else {
+            return Err(print_error(
+                Some(WEIRD_ERROR),
+                Some("Didn't find term".to_owned()),
+            ));
         }
-        return Err(print_error(
-            Some(WEIRD_ERROR),
-            Some("Didn't find term".to_owned()),
-        ));
+        return Ok(term);
     }
 
     fn peek(&self) -> Option<&Token> {

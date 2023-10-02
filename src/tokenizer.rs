@@ -91,14 +91,23 @@ pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
                     t_type: TokenType::T_RETURN,
                     value: None,
                 })
+            } else if syntax == INT.syntax {
+                tokens.push(Token {
+                    t_type: TokenType::T_INT,
+                    value: None,
+                })
             } else {
-                return Err(print_error(
-                    Some(WEIRD_ERROR),
-                    Some(format!(
-                        "undefined syntax (which should have been read as an identifier): {}",
-                        syntax
-                    )),
-                ));
+                tokens.push(Token {
+                    t_type: TokenType::T_IDENT,
+                    value: Some(syntax.clone()),
+                })
+                // return Err(print_error(
+                //     Some(WEIRD_ERROR),
+                //     Some(format!(
+                //         "undefined syntax (which should have been read as an identifier): {}",
+                //         syntax
+                //     )),
+                // ));
             }
         } else if c.is_digit(10) {
             syntax.push(c);
@@ -112,7 +121,7 @@ pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
             }
 
             tokens.push(Token {
-                t_type: TokenType::T_INT,
+                t_type: TokenType::T_INT_LIT,
                 value: Some(syntax.clone()),
             })
         } else {
@@ -122,6 +131,11 @@ pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
                     t_type: TokenType::T_SEMI,
                     value: None,
                 });
+            } else if syntax == EQ.syntax {
+                tokens.push(Token {
+                    t_type: TokenType::T_EQ,
+                    value: None,
+                })
             }
         }
         syntax.clear();

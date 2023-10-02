@@ -1,1 +1,11 @@
-ret 159548;
+int a = 7;
+int b = 17;
+int c = 23;
+int d = 35;
+
+a = 12;
+b = c;
+a = b;
+
+
+ret a;

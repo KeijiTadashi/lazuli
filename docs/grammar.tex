@@ -67,16 +67,23 @@
 
 %\section{First section}
 
-\textbf{Implemented:}
+\textbf{Implemented: (sort of)}
 \begin{flalign*}
-    [prog] & \to  [stmt]^*           \\
+    [prog] & \to  [stmt]^* \\
     [stmt] & \to
     \begin{cases}
-        ret ~[expr]; \\
-        %int ~ ident = [expr]; \\
-    \end{cases} \\
-    [expr] & \to [term]              \\
-    [term] & \to int\_lit
+        ret ~[expr];          \\
+        int ~ ident = [expr]; \\
+    \end{cases}  \\
+    [expr] & \to
+    \begin{cases}
+        [term] \\
+    \end{cases}           \\
+    [term] & \to
+    \begin{cases}
+        int\_lit \\
+        ident    \\
+    \end{cases}
 \end{flalign*}
 \textbf{Todo:}
 \begin{flalign*}

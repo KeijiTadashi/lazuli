@@ -1,5 +1,7 @@
 // use core::fmt;
 
+#![allow(non_camel_case_types)]
+
 // also operators
 #[derive(Debug)]
 pub struct Keyword<'a> {
@@ -7,24 +9,51 @@ pub struct Keyword<'a> {
     pub t_type: TokenType,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Token {
     pub t_type: TokenType,
     pub value: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum TokenType {
+    #[default]
+    NONE,
+
+    // Keywords (words)
     T_RETURN,
-    T_SEMI,
-    // Values without const keyword
     T_INT,
+
+    // Keywords (symbols)
+    T_EQ,
+    T_PLUS,
+    T_MINUS,
+    T_FSLASH,
+    T_STAR,
+    T_SEMI,
+
+    // Values without const keyword
+    T_INT_LIT,
+    T_IDENT,
 }
 
+// Keywords (words)
 pub const RETURN: Keyword = Keyword {
     syntax: "ret",
     t_type: TokenType::T_RETURN,
 };
+
+pub const INT: Keyword = Keyword {
+    syntax: "int",
+    t_type: TokenType::T_INT,
+};
+
+// Keywords (symbols)
+pub const EQ: Keyword = Keyword {
+    syntax: "=",
+    t_type: TokenType::T_EQ,
+};
+
 pub const LINEEND: Keyword = Keyword {
     syntax: ";",
     t_type: TokenType::T_SEMI,
