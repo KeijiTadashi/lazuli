@@ -1,9 +1,11 @@
+use std::rc::Rc;
+
 use crate::{
     global::{printd, DebugType},
     lzl_error::{print_error, WEIRD_ERROR},
     nodes::*,
     tokens::{
-        Token,
+        bin_prec, Token,
         TokenType::{self, *},
     },
 };
@@ -59,7 +61,7 @@ impl Parser {
         return Ok(prog);
     }
 
-    fn parse_stmt(self: &'_ mut Self) -> Result<NodeStmt, u8> {
+    fn parse_stmt(self: &'_ mut Self) -> Result<Rc<NodeStmt>, u8> {
         let mut stmt = NodeStmt::new();
 
         if let Some(peeked) = self.peek() {
@@ -70,13 +72,13 @@ impl Parser {
             if peeked.t_type == T_RETURN {
                 self.next();
                 let mut stmt_ret = NodeStmtRet::new();
-                match self.parse_expr() {
-                    Ok(n) => stmt_ret.expr = n,
+                match self.parse_expr(None) {
+                    Ok(n) => stmt_ret.expr = n.into(),
                     Err(e) => return Err(e),
                 }
                 match self.try_next(T_SEMI) {
                     Some(_) => {
-                        stmt.var = VarStmt::RET(stmt_ret);
+                        stmt.var = VarStmt::RET(stmt_ret.into());
                     }
                     None => {
                         return Err(print_error(
@@ -104,8 +106,16 @@ impl Parser {
                 }
                 let mut i: usize = 0;
                 while let Some(term) = self.peek_ahead(i) {
-                    if ![T_INT_LIT, T_IDENT, T_PLUS, T_MINUS, T_FSLASH, T_STAR]
-                        .contains(&term.t_type)
+                    if ![
+                        T_INT_LIT,
+                        T_IDENT,
+                        T_PLUS,
+                        T_MINUS,
+                        T_FSLASH,
+                        T_STAR,
+                        T_UNDERSCORE,
+                    ]
+                    .contains(&term.t_type)
                     {
                         if T_SEMI == term.t_type {
                             break;
@@ -120,15 +130,15 @@ impl Parser {
                     }
                     i += 1;
                 }
-                match self.parse_expr() {
+                match self.parse_expr(None) {
                     Ok(n) => {
-                        stmt_int.expr = n;
+                        stmt_int.expr = n.into();
                     }
                     Err(e) => return Err(e),
                 };
                 match self.try_next(T_SEMI) {
                     Some(_) => {
-                        stmt.var = VarStmt::ASSIGN(stmt_int);
+                        stmt.var = VarStmt::ASSIGN(stmt_int.into());
                     }
                     None => {
                         return Err(print_error(
@@ -146,15 +156,15 @@ impl Parser {
                 }
                 // TODO type checking of expression and variable type
 
-                match self.parse_expr() {
+                match self.parse_expr(None) {
                     Ok(n) => {
-                        stmt_ident.expr = n;
+                        stmt_ident.expr = n.into();
                     }
                     Err(e) => return Err(e),
                 };
                 match self.try_next(T_SEMI) {
                     Some(_) => {
-                        stmt.var = VarStmt::ASSIGN(stmt_ident);
+                        stmt.var = VarStmt::ASSIGN(stmt_ident.into());
                     }
                     None => {
                         return Err(print_error(
@@ -176,12 +186,30 @@ impl Parser {
             ));
         }
 
-        return Ok(stmt);
+        return Ok(stmt.into());
     }
 
-    fn parse_expr(self: &'_ mut Self) -> Result<NodeExpr, u8> {
-        let mut term_lhs = self.parse_term();
+    fn parse_expr(self: &'_ mut Self, min_precedence: Option<u8>) -> Result<Rc<NodeExpr>, u8> {
         let mut expr_lhs = NodeExpr::new();
+
+        match self.try_next(T_UNDERSCORE) {
+            Some(_) => {
+                let mut expr_neg = NodeNegExpr::new();
+                match self.parse_expr(None) {
+                    Ok(n) => {
+                        expr_neg.expr = n;
+                        expr_lhs.var = VarExpr::NEG(expr_neg.into());
+                        return Ok(expr_lhs.into());
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+            None => (),
+        }
+
+        let min_prec = min_precedence.unwrap_or(0);
+
+        let term_lhs = self.parse_term();
 
         printd(
             format!("expr: {:?}||term_lhs: {:?}", self.peek(), term_lhs),
@@ -189,13 +217,62 @@ impl Parser {
         );
         match term_lhs {
             Err(e) => return Err(e),
-            Ok(n) => expr_lhs.var = VarExpr::TERM(n),
+            Ok(n) => expr_lhs.var = VarExpr::TERM(n.into()),
         }
-        // loop {
 
-        // }
+        loop {
+            let prec: Option<u8>;
+            match self.peek() {
+                Some(t) => {
+                    prec = bin_prec(&t.t_type);
+                    if prec.is_none() || prec < Some(min_prec) {
+                        break;
+                    }
+                }
+                None => break,
+            }
+            let operation: Token;
+            match self.next() {
+                Some(o) => operation = o,
+                None => break,
+            }
+            let next_min_prec: u8 = prec.unwrap() + 1;
+            let expr_rhs = self.parse_expr(Some(next_min_prec));
 
-        return Ok(expr_lhs);
+            match expr_rhs {
+                Ok(n) => {
+                    let mut expr = NodeBinExpr::new();
+                    let mut expr_lhs_new = NodeExpr::new();
+
+                    match expr_lhs.var {
+                        VarExpr::BIN(l) => expr_lhs_new.var = VarExpr::BIN(l.into()),
+                        VarExpr::TERM(l) => expr_lhs_new.var = VarExpr::TERM(l.into()),
+                        _ => {
+                            return Err(print_error(
+                                Some(WEIRD_ERROR),
+                                Some(format!("NOT IMPLEMENTED: {:?}", expr_lhs).to_owned()),
+                            ))
+                        }
+                    }
+
+                    expr.lhs = expr_lhs_new.into();
+                    expr.rhs = n.into();
+
+                    match operation.t_type {
+                        T_PLUS => expr.var = VarBinExpr::ADD,
+                        T_MINUS => expr.var = VarBinExpr::SUB,
+                        T_FSLASH => expr.var = VarBinExpr::DIV,
+                        T_STAR => expr.var = VarBinExpr::MUL,
+                        _ => return Err(print_error(Some(WEIRD_ERROR), Some("Shouldn't be able to get here, undifined binary expresion operator".to_owned())))
+                    }
+
+                    expr_lhs.var = VarExpr::BIN(expr.into());
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        return Ok(expr_lhs.into());
 
         // if let Some(peeked) = self.peek() {
         //     return Ok(self.parse_term());
@@ -207,7 +284,7 @@ impl Parser {
         // }
     }
 
-    fn parse_term(self: &'_ mut Self) -> Result<NodeTerm, u8> {
+    fn parse_term(self: &'_ mut Self) -> Result<Rc<NodeTerm>, u8> {
         let mut term = NodeTerm::new();
         // if let Some(peeked) = self.peek() {
         //     if
@@ -216,21 +293,22 @@ impl Parser {
             format!("Parse Term, peek: {:?}", self.peek()),
             crate::global::DebugType::MESSAGE,
         );
+
         if let Some(int_lit) = self.try_next(T_INT_LIT) {
             let mut term_int_lit = NodeTermIntLit::new();
             term_int_lit.value = int_lit.value.unwrap();
-            term.var = VarTerm::INT_LIT(term_int_lit);
+            term.var = VarTerm::INT_LIT(term_int_lit.into());
         } else if let Some(ident) = self.try_next(T_IDENT) {
             let mut term_ident = NodeTermIdent::new();
             term_ident.ident = ident.value.unwrap();
-            term.var = VarTerm::IDENT(term_ident);
+            term.var = VarTerm::IDENT(term_ident.into());
         } else {
             return Err(print_error(
                 Some(WEIRD_ERROR),
                 Some("Didn't find term".to_owned()),
             ));
         }
-        return Ok(term);
+        return Ok(term.into());
     }
 
     fn peek(&self) -> Option<&Token> {

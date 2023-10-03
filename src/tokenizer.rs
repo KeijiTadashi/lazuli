@@ -136,6 +136,36 @@ pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
                     t_type: TokenType::T_EQ,
                     value: None,
                 })
+            } else if syntax == PLUS.syntax {
+                tokens.push(Token {
+                    t_type: PLUS.t_type,
+                    value: None,
+                })
+            } else if syntax == MINUS.syntax {
+                tokens.push(Token {
+                    t_type: MINUS.t_type,
+                    value: None,
+                })
+            } else if syntax == STAR.syntax {
+                tokens.push(Token {
+                    t_type: STAR.t_type,
+                    value: None,
+                })
+            } else if syntax == FSLASH.syntax {
+                tokens.push(Token {
+                    t_type: FSLASH.t_type,
+                    value: None,
+                })
+            } else if syntax == UNDERSCORE.syntax {
+                tokens.push(Token {
+                    t_type: UNDERSCORE.t_type,
+                    value: None,
+                })
+            } else {
+                return Err(print_error(
+                    Some(WEIRD_ERROR),
+                    Some(format!("Undefined char '{}'", c).to_owned()),
+                ));
             }
         }
         syntax.clear();

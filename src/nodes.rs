@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct NodeProg {
-    pub stmts: Vec<NodeStmt>,
+    pub stmts: Vec<Rc<NodeStmt>>,
 }
 
 impl NodeProg {
@@ -16,8 +16,8 @@ impl NodeProg {
 pub enum VarStmt {
     #[default]
     NONE,
-    RET(NodeStmtRet),
-    ASSIGN(NodeStmtAssign),
+    RET(Rc<NodeStmtRet>),
+    ASSIGN(Rc<NodeStmtAssign>),
     // ASSIGN2(NodeStmtAssign),
 }
 
@@ -36,13 +36,13 @@ impl NodeStmt {
 
 #[derive(Debug)]
 pub struct NodeStmtRet {
-    pub expr: NodeExpr,
+    pub expr: Rc<NodeExpr>,
 }
 
 impl NodeStmtRet {
     pub fn new() -> NodeStmtRet {
         NodeStmtRet {
-            expr: NodeExpr::new(),
+            expr: NodeExpr::new().into(),
         }
     }
 }
@@ -51,7 +51,7 @@ impl NodeStmtRet {
 pub struct NodeStmtAssign {
     pub var_type: Rc<NodeType>,
     pub ident: String,
-    pub expr: NodeExpr,
+    pub expr: Rc<NodeExpr>,
 }
 
 impl NodeStmtAssign {
@@ -59,7 +59,7 @@ impl NodeStmtAssign {
         NodeStmtAssign {
             var_type: Default::default(),
             ident: String::new(),
-            expr: NodeExpr::new(),
+            expr: NodeExpr::new().into(),
         }
     }
 }
@@ -68,7 +68,9 @@ impl NodeStmtAssign {
 pub enum VarExpr {
     #[default]
     NONE,
-    TERM(NodeTerm),
+    TERM(Rc<NodeTerm>),
+    BIN(Rc<NodeBinExpr>),
+    NEG(Rc<NodeNegExpr>),
 }
 
 #[derive(Debug)]
@@ -88,8 +90,8 @@ impl NodeExpr {
 pub enum VarTerm {
     #[default]
     NONE,
-    INT_LIT(NodeTermIntLit),
-    IDENT(NodeTermIdent),
+    INT_LIT(Rc<NodeTermIntLit>),
+    IDENT(Rc<NodeTermIdent>),
 }
 
 #[derive(Debug)]
@@ -130,6 +132,116 @@ impl NodeTermIdent {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct NodeBinExpr {
+    pub var: VarBinExpr,
+    pub lhs: Rc<NodeExpr>,
+    pub rhs: Rc<NodeExpr>,
+}
+
+impl NodeBinExpr {
+    pub fn new() -> NodeBinExpr {
+        NodeBinExpr {
+            var: Default::default(),
+            lhs: NodeExpr::new().into(),
+            rhs: NodeExpr::new().into(),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub enum VarBinExpr {
+    #[default]
+    NONE,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+}
+
+#[derive(Debug)]
+pub struct NodeNegExpr {
+    pub expr: Rc<NodeExpr>,
+}
+
+impl NodeNegExpr {
+    pub fn new() -> NodeNegExpr {
+        NodeNegExpr {
+            expr: NodeExpr::new().into(),
+        }
+    }
+}
+
+// #[derive(Debug, Default)]
+// pub enum VarBinExpr {
+//     #[default]
+//     NONE,
+//     ADD(Rc<NodeBinAdd>),
+//     SUB(Rc<NodeBinSub>),
+//     MUL(Rc<NodeBinMul>),
+//     DIV(Rc<NodeBinDiv>),
+// }
+
+// #[derive(Debug)]
+// pub struct NodeBinAdd {
+//     pub lhs: Rc<NodeExpr>,
+//     pub rhs: Rc<NodeExpr>,
+// }
+
+// impl NodeBinAdd {
+//     pub fn new() -> NodeBinAdd {
+//         NodeBinAdd {
+//             lhs: NodeExpr::new().into(),
+//             rhs: NodeExpr::new().into(),
+//         }
+//     }
+// }
+
+// #[derive(Debug)]
+// pub struct NodeBinSub {
+//     pub lhs: Rc<NodeExpr>,
+//     pub rhs: Rc<NodeExpr>,
+// }
+
+// impl NodeBinSub {
+//     pub fn new() -> NodeBinSub {
+//         NodeBinSub {
+//             lhs: NodeExpr::new().into(),
+//             rhs: NodeExpr::new().into(),
+//         }
+//     }
+// }
+
+// #[derive(Debug)]
+// pub struct NodeBinMul {
+//     pub lhs: Rc<NodeExpr>,
+//     pub rhs: Rc<NodeExpr>,
+// }
+
+// impl NodeBinMul {
+//     pub fn new() -> NodeBinMul {
+//         NodeBinMul {
+//             lhs: NodeExpr::new().into(),
+//             rhs: NodeExpr::new().into(),
+//         }
+//     }
+// }
+
+// #[derive(Debug)]
+// pub struct NodeBinDiv {
+//     pub lhs: Rc<NodeExpr>,
+//     pub rhs: Rc<NodeExpr>,
+// }
+
+// impl NodeBinDiv {
+//     pub fn new() -> NodeBinDiv {
+//         NodeBinDiv {
+//             lhs: NodeExpr::new().into(),
+//             rhs: NodeExpr::new().into(),
+//         }
+//     }
+// }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NodeType {

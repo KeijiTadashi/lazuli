@@ -69,22 +69,44 @@
 
 \textbf{Implemented: (sort of)}
 \begin{flalign*}
-    [prog] & \to  [stmt]^* \\
-    [stmt] & \to
+    [prog]    & \to
+    \begin{aligned}
+         &  & [stmt]^* \\
+    \end{aligned}                                                                   \\
+    [stmt]    & \to
     \begin{cases}
-        ret ~[expr];          \\
-        int ~ ident = [expr]; \\
-    \end{cases}  \\
-    [expr] & \to
+        \{ [type] \} ~\langle ident \rangle = [expr]; & \textbf{variable (re)assignment} \\
+        ret ~[expr];                                  & \textbf{exit/return}             \\
+        % int ~ ident = [expr]; \\
+    \end{cases} \\
+    % [asgn] & \to
+    % \begin{cases}
+    % \end{cases}
+    [expr]    & \to
     \begin{cases}
-        [term] \\
-    \end{cases}           \\
-    [term] & \to
+        [term]                                                \\
+        [binexpr]                                             \\
+        \_ [expr] & \textbf{negative expression (underscore)} \\
+    \end{cases}                            \\
+    [binexpr] & \to
     \begin{cases}
-        int\_lit \\
-        ident    \\
+        [expr] + [expr]   & prec = 0 \\
+        [expr] - [expr]   & prec = 0 \\
+        [expr] * [expr]   & prec = 1 \\
+        [expr] ~/~ [expr] & prec = 1 \\
+    \end{cases}                                                     \\
+    [term]    & \to
+    \begin{cases}
+        \langle int\_lit \rangle \\
+        \langle ident \rangle    \\
+    \end{cases}                                                         \\
+    [type]    & \to
+    \begin{cases}
+        int
     \end{cases}
 \end{flalign*}
+
+
 \textbf{Todo:}
 \begin{flalign*}
     [prog]    & \to  [stmt]^*    \\

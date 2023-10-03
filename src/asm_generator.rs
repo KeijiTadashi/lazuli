@@ -131,8 +131,18 @@ impl AsmGenerator {
 
     fn gen_expr(&mut self, expr: &NodeExpr) {
         match &expr.var {
-            VarExpr::NONE => todo!(),
+            VarExpr::NONE => printd(
+                format!("NOT YET IMPLEMENTED: {:?}", expr.var),
+                DebugType::REMOVE,
+            ),
             VarExpr::TERM(var_expr) => self.gen_term(&var_expr),
+            VarExpr::BIN(var_expr) => self.gen_binexpr(&var_expr),
+            VarExpr::NEG(var_expr) => {
+                self.gen_expr(&var_expr.expr);
+                self.pop("rax");
+                self.push_out("neg", "rax");
+                self.push("rax");
+            }
         }
     }
 
@@ -145,6 +155,10 @@ impl AsmGenerator {
             }
             VarTerm::IDENT(ident) => {
                 let var = self.vars.iter().find(|&v| v.ident == ident.ident);
+                printd(
+                    format!("IDENT: {:?}, stacksize: {}", var, self.stack_size),
+                    DebugType::REMOVE,
+                );
                 match var {
                     Some(v) => self.push(&format!(
                         "QWORD [rsp + {}]",
@@ -160,6 +174,47 @@ impl AsmGenerator {
                         )
                     }
                 }
+            }
+        }
+    }
+
+    fn gen_binexpr(&mut self, binexpr: &NodeBinExpr) {
+        match &binexpr.var {
+            VarBinExpr::NONE => todo!(),
+            VarBinExpr::ADD => {
+                self.gen_expr(&binexpr.rhs);
+                self.gen_expr(&binexpr.lhs);
+                self.pop("rax");
+                self.pop("rbx");
+                self.push_out("add", "rax, rbx");
+                self.push("rax");
+            }
+            VarBinExpr::SUB => {
+                self.gen_expr(&binexpr.rhs);
+                self.gen_expr(&binexpr.lhs);
+                self.pop("rax");
+                self.pop("rbx");
+                self.push_out("sub", "rax, rbx");
+                self.push("rax");
+            }
+            VarBinExpr::MUL => {
+                self.gen_expr(&binexpr.rhs);
+                self.gen_expr(&binexpr.lhs);
+                self.pop("rax");
+                self.pop("rbx");
+                self.push_out("mul", "rbx");
+                self.push("rax");
+            }
+            // 64 division -> div [value](64bit) => [rdx][rax] / [value] ==> result [rax] : quotient, [rdx] : remainder
+            // only unsigned division if one of the numbers is signed (negative) it doesn't work
+            VarBinExpr::DIV => {
+                self.gen_expr(&binexpr.rhs);
+                self.gen_expr(&binexpr.lhs);
+                self.push_out("xor", "rdx, rdx");
+                self.pop("rax");
+                self.pop("rbx");
+                self.push_out("div", "rbx");
+                self.push("rax");
             }
         }
     }

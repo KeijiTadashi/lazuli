@@ -1,11 +1,13 @@
-int a = 7;
-int b = 17;
-int c = 23;
-int d = 35;
+int a = 47;
+int b = a - 50;
+int c = _7;
 
-a = 12;
-b = c;
-a = b;
+int BelowEqualTwoBecauseTheOrderIsWrong = 7040;
+a = a + 1;
 
 
-ret a;
+int zet = 47;
+int z = ____10 + 3*8 / 2 - 5 + 30;
+
+
+ret z;

@@ -31,10 +31,19 @@ pub enum TokenType {
     T_FSLASH,
     T_STAR,
     T_SEMI,
+    T_UNDERSCORE,
 
     // Values without const keyword
     T_INT_LIT,
     T_IDENT,
+}
+
+pub fn bin_prec(token_type: &TokenType) -> Option<u8> {
+    return match token_type {
+        TokenType::T_PLUS | TokenType::T_MINUS => Some(0),
+        TokenType::T_FSLASH | TokenType::T_STAR => Some(1),
+        _ => None,
+    };
 }
 
 // Keywords (words)
@@ -57,6 +66,31 @@ pub const EQ: Keyword = Keyword {
 pub const LINEEND: Keyword = Keyword {
     syntax: ";",
     t_type: TokenType::T_SEMI,
+};
+
+pub const PLUS: Keyword = Keyword {
+    syntax: "+",
+    t_type: TokenType::T_PLUS,
+};
+
+pub const MINUS: Keyword = Keyword {
+    syntax: "-",
+    t_type: TokenType::T_MINUS,
+};
+
+pub const STAR: Keyword = Keyword {
+    syntax: "*",
+    t_type: TokenType::T_STAR,
+};
+
+pub const FSLASH: Keyword = Keyword {
+    syntax: "/",
+    t_type: TokenType::T_FSLASH,
+};
+
+pub const UNDERSCORE: Keyword = Keyword {
+    syntax: "_",
+    t_type: TokenType::T_UNDERSCORE,
 };
 
 // impl fmt::Display for TokenType {
