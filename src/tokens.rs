@@ -32,6 +32,8 @@ pub enum TokenType {
     T_STAR,
     T_SEMI,
     T_UNDERSCORE,
+    T_OPEN_PAR,
+    T_CLOSE_PAR,
 
     // Values without const keyword
     T_INT_LIT,
@@ -91,6 +93,16 @@ pub const FSLASH: Keyword = Keyword {
 pub const UNDERSCORE: Keyword = Keyword {
     syntax: "_",
     t_type: TokenType::T_UNDERSCORE,
+};
+
+pub const OPEN_PAR: Keyword = Keyword {
+    syntax: "(",
+    t_type: TokenType::T_OPEN_PAR,
+};
+
+pub const CLOSE_PAR: Keyword = Keyword {
+    syntax: ")",
+    t_type: TokenType::T_CLOSE_PAR,
 };
 
 // impl fmt::Display for TokenType {

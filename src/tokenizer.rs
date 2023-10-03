@@ -101,13 +101,6 @@ pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
                     t_type: TokenType::T_IDENT,
                     value: Some(syntax.clone()),
                 })
-                // return Err(print_error(
-                //     Some(WEIRD_ERROR),
-                //     Some(format!(
-                //         "undefined syntax (which should have been read as an identifier): {}",
-                //         syntax
-                //     )),
-                // ));
             }
         } else if c.is_digit(10) {
             syntax.push(c);
@@ -159,6 +152,16 @@ pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
             } else if syntax == UNDERSCORE.syntax {
                 tokens.push(Token {
                     t_type: UNDERSCORE.t_type,
+                    value: None,
+                })
+            } else if syntax == OPEN_PAR.syntax {
+                tokens.push(Token {
+                    t_type: OPEN_PAR.t_type,
+                    value: None,
+                })
+            } else if syntax == CLOSE_PAR.syntax {
+                tokens.push(Token {
+                    t_type: CLOSE_PAR.t_type,
                     value: None,
                 })
             } else {

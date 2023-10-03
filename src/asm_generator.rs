@@ -180,6 +180,9 @@ impl AsmGenerator {
                 self.push_out("neg", "rax");
                 self.push("rax");
             }
+            VarTerm::PAR(var_term) => {
+                self.gen_expr(&var_term.expr);
+            }
         }
     }
 

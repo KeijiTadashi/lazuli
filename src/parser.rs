@@ -258,22 +258,10 @@ impl Parser {
         }
 
         return Ok(expr_lhs.into());
-
-        // if let Some(peeked) = self.peek() {
-        //     return Ok(self.parse_term());
-        // } else {
-        //     return Err(print_error(
-        //         Some(WEIRD_ERROR),
-        //         Some("No token at expr".to_owned()),
-        //     ));
-        // }
     }
 
     fn parse_term(self: &'_ mut Self) -> Result<Rc<NodeTerm>, u8> {
         let mut term = NodeTerm::new();
-        // if let Some(peeked) = self.peek() {
-        //     if
-        // }
         printd(
             format!("Parse Term, peek: {:?}", self.peek()),
             crate::global::DebugType::MESSAGE,
@@ -287,12 +275,27 @@ impl Parser {
             let mut term_ident = NodeTermIdent::new();
             term_ident.ident = ident.value.unwrap();
             term.var = VarTerm::IDENT(term_ident.into());
-        } else if let Some(neg) = self.try_next(T_UNDERSCORE) {
+        } else if self.try_next(T_UNDERSCORE).is_some() {
             let mut term_neg = NodeTermNeg::new();
             match self.parse_term() {
                 Ok(n) => {
                     term_neg.term = n;
                     term.var = VarTerm::NEG(term_neg.into());
+                }
+                Err(e) => return Err(e),
+            }
+        } else if self.try_next(T_OPEN_PAR).is_some() {
+            let mut term_par = NodeTermPar::new();
+            match self.parse_expr(None) {
+                Ok(n) => {
+                    if self.try_next(T_CLOSE_PAR).is_none() {
+                        return Err(print_error(
+                            Some(WEIRD_ERROR),
+                            Some(format!("Expexted ')'.").to_owned()),
+                        ));
+                    }
+                    term_par.expr = n.clone();
+                    term.var = VarTerm::PAR(term_par.into());
                 }
                 Err(e) => return Err(e),
             }
