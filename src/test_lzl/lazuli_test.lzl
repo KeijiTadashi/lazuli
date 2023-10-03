@@ -3,11 +3,11 @@ int b = a - 50;
 int c = _7;
 
 int BelowEqualTwoBecauseTheOrderIsWrong = 7040;
-a = a + 1;
+a = a + 1 + a;
 
 
 int zet = 47;
 int z = ____10 + 3*8 / 2 - 5 + 30;
 
 
-ret z;
+ret a;

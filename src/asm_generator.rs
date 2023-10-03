@@ -92,49 +92,57 @@ impl AsmGenerator {
             }
             // TODO move assignment to own node with own gen_assign
             VarStmt::ASSIGN(var_stmt) => {
-                let var = self.vars.iter_mut().find(|v| v.ident == var_stmt.ident);
+                let pos = self.vars.iter().position(|v| v.ident == var_stmt.ident);
+                printd(format!("Assignment -> pos: {:?}", pos), DebugType::CREATE);
 
-                if var_stmt.var_type == NodeType::NONE.into() {
-                    match var {
-                        Some(v) => v.stack_loc = self.stack_size,
-                        None => {self.exit_code = print_error(
-                            Some(WEIRD_ERROR),
-                            Some(format!(
-                                "A variable with name: \"{}\" has not yet been assigned, and therefore has no type",
-                                var_stmt.ident
-                            )),
-                        )},
+                match var_stmt.var_type.as_ref() {
+                    // NONE -> No identifier before var name (needs to exist already)
+                    NodeType::NONE => {
+                        match pos {
+                            Some(i) => {
+                                self.gen_expr(&var_stmt.expr);
+                                self.vars[i].stack_loc = self.stack_size - 1;
+                            },
+                            None => self.exit_code = print_error(
+                                Some(WEIRD_ERROR),
+                                Some(format!(
+                                    "A variable with name: \"{}\" has not yet been assigned, and therefore has no type",
+                                    var_stmt.ident
+                                )),
+                            ),
+                        }
                     }
-                } else {
-                    match var {
-                        Some(_) => {
-                            self.exit_code = print_error(
+                    NodeType::N_INT => {
+                        match pos {
+                            Some(_) => self.exit_code = print_error(
                                 Some(WEIRD_ERROR),
                                 Some(format!(
                                     "A variable with name: \"{}\" has already been assigned.",
                                     var_stmt.ident
-                                )),
-                            )
+                            ))),
+                            None => {
+                                self.vars.push(Var {
+                                    var_type: var_stmt.var_type.clone(),
+                                    ident: var_stmt.ident.to_owned(),
+                                    stack_loc: self.stack_size,
+                                });
+                                self.gen_expr(&var_stmt.expr);
+                            }
                         }
-                        None => self.vars.push(Var {
-                            var_type: var_stmt.var_type.clone(),
-                            ident: var_stmt.ident.to_owned(),
-                            stack_loc: self.stack_size,
-                        }),
-                    }
+                    },
                 }
-
-                self.gen_expr(&var_stmt.expr);
             }
         }
     }
 
     fn gen_expr(&mut self, expr: &NodeExpr) {
         match &expr.var {
-            VarExpr::NONE => printd(
-                format!("NOT YET IMPLEMENTED: {:?}", expr.var),
-                DebugType::REMOVE,
-            ),
+            VarExpr::NONE => {
+                _ = print_error(
+                    Some(WEIRD_ERROR),
+                    Some(format!("NOT YET IMPLEMENTED: {:?}", expr.var).to_owned()),
+                )
+            }
             VarExpr::TERM(var_expr) => self.gen_term(&var_expr),
             VarExpr::BIN(var_expr) => self.gen_binexpr(&var_expr),
             VarExpr::NEG(var_expr) => {
@@ -155,10 +163,7 @@ impl AsmGenerator {
             }
             VarTerm::IDENT(ident) => {
                 let var = self.vars.iter().find(|&v| v.ident == ident.ident);
-                printd(
-                    format!("IDENT: {:?}, stacksize: {}", var, self.stack_size),
-                    DebugType::REMOVE,
-                );
+
                 match var {
                     Some(v) => self.push(&format!(
                         "QWORD [rsp + {}]",
