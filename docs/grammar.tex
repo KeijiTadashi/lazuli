@@ -72,12 +72,17 @@
     [prog]    & \to
     \begin{aligned}
          &  & [stmt]^* \\
-    \end{aligned}                                                                   \\
+    \end{aligned}                                                           \\
+    [scope]   & \to
+    \begin{aligned}
+         &  & \{[stmt]^*\} \\
+    \end{aligned}                                                       \\
     [stmt]    & \to
     \begin{cases}
-        \{ [type] \} ~\langle ident \rangle = [expr]; & \textbf{variable (re)assignment} \\
-        ret ~[expr];                                  & \textbf{exit/return}             \\
-        % int ~ ident = [expr]; \\
+        [type] ~\langle ident \rangle = [expr]; & \textbf{variable assignment}   \\
+        \langle ident \rangle = [expr];         & \textbf{variable reassignment} \\
+        ret ~[expr];                            & \textbf{exit/return}           \\
+        [scope]                                                                  \\
     \end{cases} \\
     % [asgn] & \to
     % \begin{cases}
@@ -86,21 +91,21 @@
     \begin{cases}
         [term]    \\
         [binexpr] \\
-    \end{cases}                                                                     \\
+    \end{cases}                                                             \\
     [binexpr] & \to
     \begin{cases}
         [expr] + [expr]   & prec = 0 \\
         [expr] - [expr]   & prec = 0 \\
         [expr] * [expr]   & prec = 1 \\
         [expr] ~/~ [expr] & prec = 1 \\
-    \end{cases}                                                     \\
+    \end{cases}                                             \\
     [term]    & \to
     \begin{cases}
         \langle int\_lit \rangle                              \\
         \langle ident \rangle                                 \\
         \_ [term] & \textbf{negative expression (underscore)} \\
         ([expr])                                              \\
-    \end{cases}                            \\
+    \end{cases}                    \\
     [type]    & \to
     \begin{cases}
         int
