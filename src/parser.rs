@@ -192,21 +192,6 @@ impl Parser {
     fn parse_expr(self: &'_ mut Self, min_precedence: Option<u8>) -> Result<Rc<NodeExpr>, u8> {
         let mut expr_lhs = NodeExpr::new();
 
-        match self.try_next(T_UNDERSCORE) {
-            Some(_) => {
-                let mut expr_neg = NodeNegExpr::new();
-                match self.parse_expr(None) {
-                    Ok(n) => {
-                        expr_neg.expr = n;
-                        expr_lhs.var = VarExpr::NEG(expr_neg.into());
-                        return Ok(expr_lhs.into());
-                    }
-                    Err(e) => return Err(e),
-                }
-            }
-            None => (),
-        }
-
         let min_prec = min_precedence.unwrap_or(0);
 
         let term_lhs = self.parse_term();
@@ -302,12 +287,22 @@ impl Parser {
             let mut term_ident = NodeTermIdent::new();
             term_ident.ident = ident.value.unwrap();
             term.var = VarTerm::IDENT(term_ident.into());
+        } else if let Some(neg) = self.try_next(T_UNDERSCORE) {
+            let mut term_neg = NodeTermNeg::new();
+            match self.parse_term() {
+                Ok(n) => {
+                    term_neg.term = n;
+                    term.var = VarTerm::NEG(term_neg.into());
+                }
+                Err(e) => return Err(e),
+            }
         } else {
             return Err(print_error(
                 Some(WEIRD_ERROR),
                 Some("Didn't find term".to_owned()),
             ));
         }
+
         return Ok(term.into());
     }
 

@@ -84,10 +84,9 @@
     % \end{cases}
     [expr]    & \to
     \begin{cases}
-        [term]                                                \\
-        [binexpr]                                             \\
-        \_ [expr] & \textbf{negative expression (underscore)} \\
-    \end{cases}                            \\
+        [term]    \\
+        [binexpr] \\
+    \end{cases}                                                                     \\
     [binexpr] & \to
     \begin{cases}
         [expr] + [expr]   & prec = 0 \\
@@ -97,9 +96,10 @@
     \end{cases}                                                     \\
     [term]    & \to
     \begin{cases}
-        \langle int\_lit \rangle \\
-        \langle ident \rangle    \\
-    \end{cases}                                                         \\
+        \langle int\_lit \rangle                              \\
+        \langle ident \rangle                                 \\
+        \_ [term] & \textbf{negative expression (underscore)} \\
+    \end{cases}                            \\
     [type]    & \to
     \begin{cases}
         int

@@ -129,7 +129,7 @@ impl AsmGenerator {
                                 self.gen_expr(&var_stmt.expr);
                             }
                         }
-                    },
+                    }
                 }
             }
         }
@@ -145,12 +145,6 @@ impl AsmGenerator {
             }
             VarExpr::TERM(var_expr) => self.gen_term(&var_expr),
             VarExpr::BIN(var_expr) => self.gen_binexpr(&var_expr),
-            VarExpr::NEG(var_expr) => {
-                self.gen_expr(&var_expr.expr);
-                self.pop("rax");
-                self.push_out("neg", "rax");
-                self.push("rax");
-            }
         }
     }
 
@@ -179,6 +173,12 @@ impl AsmGenerator {
                         )
                     }
                 }
+            }
+            VarTerm::NEG(var_term) => {
+                self.gen_term(&var_term.term);
+                self.pop("rax");
+                self.push_out("neg", "rax");
+                self.push("rax");
             }
         }
     }

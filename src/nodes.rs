@@ -70,7 +70,6 @@ pub enum VarExpr {
     NONE,
     TERM(Rc<NodeTerm>),
     BIN(Rc<NodeBinExpr>),
-    NEG(Rc<NodeNegExpr>),
 }
 
 #[derive(Debug)]
@@ -92,6 +91,7 @@ pub enum VarTerm {
     NONE,
     INT_LIT(Rc<NodeTermIntLit>),
     IDENT(Rc<NodeTermIdent>),
+    NEG(Rc<NodeTermNeg>),
 }
 
 #[derive(Debug)]
@@ -161,14 +161,14 @@ pub enum VarBinExpr {
 }
 
 #[derive(Debug)]
-pub struct NodeNegExpr {
-    pub expr: Rc<NodeExpr>,
+pub struct NodeTermNeg {
+    pub term: Rc<NodeTerm>,
 }
 
-impl NodeNegExpr {
-    pub fn new() -> NodeNegExpr {
-        NodeNegExpr {
-            expr: NodeExpr::new().into(),
+impl NodeTermNeg {
+    pub fn new() -> NodeTermNeg {
+        NodeTermNeg {
+            term: NodeTerm::new().into(),
         }
     }
 }
