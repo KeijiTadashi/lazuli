@@ -125,7 +125,7 @@ fn main() -> ExitCode {
         let parse_result = parser.parse();
         match parse_result {
             Ok(r) => {
-                printd(format!("parse result:\n{:?}", r), DebugType::MESSAGE);
+                printd(format!("parse result:\n{:?}", r), DebugType::NONE);
                 let mut gen = asm_generator::AsmGenerator::new();
 
                 match gen.generate_asm(output_file.to_owned(), r) {

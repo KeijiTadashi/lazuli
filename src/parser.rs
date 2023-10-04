@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     global::{printd, DebugType},
-    lzl_error::{print_error, WEIRD_ERROR},
+    lzl_error::*,
     nodes::*,
     tokens::{
         bin_prec, Token,
@@ -26,38 +26,14 @@ impl Parser {
     pub fn parse(self: &'_ mut Self) -> Result<NodeProg, u8> {
         let mut prog: NodeProg = NodeProg::new();
         printd("Started parse".to_owned(), DebugType::MESSAGE);
-        while self.peek().is_some() {
-            printd(
-                format!("Peek in prog: {:?}", self.peek()),
-                DebugType::MESSAGE,
-            );
+        while let Some(peeked) = self.peek() {
+            printd(format!("Peek in prog: {:?}", peeked), DebugType::NONE);
             let stmt = self.parse_stmt();
             match stmt {
                 Ok(n) => prog.stmts.push(n),
                 Err(e) => return Err(e),
             }
         }
-        // printd(
-        //     format!(
-        //         "tokens: {:?}\n peek: {:?}\npeek ahead 1: {:?}\npeek again: {:?}",
-        //         self.tokens,
-        //         self.peek(),
-        //         self.peek_ahead(1),
-        //         self.peek()
-        //     ),
-        //     DebugType::MESSAGE,
-        // );
-        // let tempnextstuffname = self.next();
-        // printd(
-        //     format!(
-        //         "next: {:?}\npeek: {:?}\ntokens: {:?}",
-        //         tempnextstuffname,
-        //         self.peek(),
-        //         self.tokens
-        //     ),
-        //     DebugType::MESSAGE,
-        // );
-
         return Ok(prog);
     }
 
@@ -67,7 +43,7 @@ impl Parser {
         if let Some(peeked) = self.peek() {
             printd(
                 format!("Peek in stmt: {:?}", peeked),
-                crate::global::DebugType::MESSAGE,
+                crate::global::DebugType::NONE,
             );
             if peeked.t_type == T_RETURN {
                 self.next();
@@ -173,6 +149,23 @@ impl Parser {
                         ))
                     }
                 }
+            } else if peeked.t_type == T_OPEN_CUR {
+                match self.parse_scope() {
+                    Ok(n) => stmt.var = VarStmt::SCOPE(n.into()),
+                    Err(e) => return Err(e),
+                }
+            } else if peeked.t_type == T_IF {
+                self.next();
+                let mut stmt_if = NodeStmtIf::new();
+                match self.parse_expr(None) {
+                    Ok(n) => stmt_if.expr = n,
+                    Err(e) => return Err(e),
+                }
+                match self.parse_scope() {
+                    Ok(n) => stmt_if.scope = n,
+                    Err(e) => return Err(e),
+                }
+                stmt.var = VarStmt::IF(stmt_if.into());
             } else {
                 return Err(print_error(
                     Some(WEIRD_ERROR),
@@ -189,6 +182,27 @@ impl Parser {
         return Ok(stmt.into());
     }
 
+    fn parse_scope(self: &'_ mut Self) -> Result<Rc<NodeScope>, u8> {
+        let mut scope = NodeScope::new();
+        self.try_next(T_OPEN_CUR);
+        while let Some(peeked) = self.peek() {
+            printd(format!("Peek in scope: {:?}", self.peek()), DebugType::NONE);
+            if peeked.t_type == T_CLOSE_CUR {
+                self.next();
+                return Ok(scope.into());
+            }
+            let stmt = self.parse_stmt();
+            match stmt {
+                Ok(n) => scope.stmts.push(n),
+                Err(e) => return Err(e),
+            }
+        }
+        return Err(print_error(
+            Some(WEIRD_ERROR),
+            Some("Expected '}'.".to_owned()),
+        ));
+    }
+
     fn parse_expr(self: &'_ mut Self, min_precedence: Option<u8>) -> Result<Rc<NodeExpr>, u8> {
         let mut expr_lhs = NodeExpr::new();
 
@@ -196,13 +210,16 @@ impl Parser {
 
         let term_lhs = self.parse_term();
 
-        printd(
-            format!("expr: {:?}||term_lhs: {:?}", self.peek(), term_lhs),
-            crate::global::DebugType::MESSAGE,
-        );
+        // printd(
+        //     format!("expr: {:?}||term_lhs: {:?}", self.peek(), term_lhs),
+        //     crate::global::DebugType::MESSAGE,
+        // );
         match term_lhs {
             Err(e) => return Err(e),
-            Ok(n) => expr_lhs.var = VarExpr::TERM(n.into()),
+            Ok(n) => {
+                printd(format!("Peek in expr: {:?}", n), DebugType::NONE);
+                expr_lhs.var = VarExpr::TERM(n.into());
+            }
         }
 
         loop {
@@ -263,8 +280,11 @@ impl Parser {
     fn parse_term(self: &'_ mut Self) -> Result<Rc<NodeTerm>, u8> {
         let mut term = NodeTerm::new();
         printd(
-            format!("Parse Term, peek: {:?}", self.peek()),
-            crate::global::DebugType::MESSAGE,
+            format!(
+                "Peek in term: {:?}",
+                self.peek().unwrap_or(&Token::default())
+            ),
+            crate::global::DebugType::NONE,
         );
 
         if let Some(int_lit) = self.try_next(T_INT_LIT) {

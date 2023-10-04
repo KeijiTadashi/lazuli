@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write, rc::Rc};
+use std::{collections::HashMap, fs::File, io::Write, rc::Rc};
 
 use crate::{
     global::*,
@@ -6,7 +6,6 @@ use crate::{
     nodes::*,
 };
 
-/// location in bytes (smallest typing is 1 byte long) INCORRECT NOW 8 BYTES
 // struct Var<'a> {
 //     var_type: &'a NodeType,
 //     ident: &'a String,
@@ -14,7 +13,7 @@ use crate::{
 struct Var {
     var_type: Rc<NodeType>,
     ident: String,
-    stack_loc: u16, // 65535 Bytes in max stack size NO LONGER CORRECT
+    stack_loc: usize,
 }
 
 pub struct AsmGenerator {
@@ -22,7 +21,9 @@ pub struct AsmGenerator {
     vars: Vec<Var>,
     // vars: Vec<Var<'a>>,
     exit_code: u8,
-    stack_size: u16,
+    stack_size: usize,
+    scopes: Vec<usize>,
+    labels: HashMap<String, u8>,
 }
 
 impl AsmGenerator {
@@ -32,6 +33,8 @@ impl AsmGenerator {
             vars: vec![],
             exit_code: EXIT_SUCCES,
             stack_size: 0,
+            scopes: vec![],
+            labels: Default::default(),
         };
     }
     // 6 space tabs, t3 for 3 letter commands "mov...", t4 for 4 letter "call.."
@@ -87,13 +90,12 @@ impl AsmGenerator {
             VarStmt::RET(var_stmt) => {
                 self.gen_expr(&var_stmt.expr);
                 self.pop("rax");
-                self.push_out("mov", "rcx, rax");
-                self.push_out("call", "ExitProcess")
+                self.write_instruction("mov", "rcx, rax");
+                self.write_instruction("call", "ExitProcess")
             }
             // TODO move assignment to own node with own gen_assign
             VarStmt::ASSIGN(var_stmt) => {
                 let pos = self.vars.iter().position(|v| v.ident == var_stmt.ident);
-                printd(format!("Assignment -> pos: {:?}", pos), DebugType::CREATE);
 
                 match var_stmt.var_type.as_ref() {
                     // NONE -> No identifier before var name (needs to exist already)
@@ -132,7 +134,34 @@ impl AsmGenerator {
                     }
                 }
             }
+            VarStmt::SCOPE(var_stmt) => {
+                self.gen_scope(&var_stmt);
+            }
+            VarStmt::IF(var_stmt) => {
+                self.gen_expr(&var_stmt.expr);
+                self.pop("rax");
+                let lbl = self.create_label("if");
+                self.write_instruction("cmp", "rax, 0");
+                self.write_instruction("je", &lbl);
+                self.gen_scope(&var_stmt.scope);
+                self.out.push_str(format!("{}:\n", lbl).as_str());
+            }
         }
+    }
+
+    fn gen_scope(&mut self, scope: &NodeScope) {
+        self.scopes.push(self.vars.len());
+        for stmt in scope.stmts.iter() {
+            self.gen_stmt(stmt);
+            if self.exit_code != EXIT_SUCCES {
+                break;
+            }
+        }
+
+        let scope_size = self.vars.len() - self.scopes.pop().unwrap_or(0);
+        self.write_instruction("add", format!("rsp, {} * 8", scope_size).as_str());
+        self.stack_size -= scope_size;
+        self.vars.truncate(self.vars.len() - scope_size);
     }
 
     fn gen_expr(&mut self, expr: &NodeExpr) {
@@ -152,7 +181,7 @@ impl AsmGenerator {
         match &term.var {
             VarTerm::NONE => todo!(),
             VarTerm::INT_LIT(int_lit) => {
-                self.push_out("mov", format!("rax, {}", int_lit.value).as_str());
+                self.write_instruction("mov", format!("rax, {}", int_lit.value).as_str());
                 self.push("rax");
             }
             VarTerm::IDENT(ident) => {
@@ -177,7 +206,7 @@ impl AsmGenerator {
             VarTerm::NEG(var_term) => {
                 self.gen_term(&var_term.term);
                 self.pop("rax");
-                self.push_out("neg", "rax");
+                self.write_instruction("neg", "rax");
                 self.push("rax");
             }
             VarTerm::PAR(var_term) => {
@@ -194,7 +223,7 @@ impl AsmGenerator {
                 self.gen_expr(&binexpr.lhs);
                 self.pop("rax");
                 self.pop("rbx");
-                self.push_out("add", "rax, rbx");
+                self.write_instruction("add", "rax, rbx");
                 self.push("rax");
             }
             VarBinExpr::SUB => {
@@ -202,7 +231,7 @@ impl AsmGenerator {
                 self.gen_expr(&binexpr.lhs);
                 self.pop("rax");
                 self.pop("rbx");
-                self.push_out("sub", "rax, rbx");
+                self.write_instruction("sub", "rax, rbx");
                 self.push("rax");
             }
             VarBinExpr::MUL => {
@@ -210,7 +239,7 @@ impl AsmGenerator {
                 self.gen_expr(&binexpr.lhs);
                 self.pop("rax");
                 self.pop("rbx");
-                self.push_out("mul", "rbx");
+                self.write_instruction("mul", "rbx");
                 self.push("rax");
             }
             // 64 division -> div [value](64bit) => [rdx][rax] / [value] ==> result [rax] : quotient, [rdx] : remainder
@@ -218,29 +247,35 @@ impl AsmGenerator {
             VarBinExpr::DIV => {
                 self.gen_expr(&binexpr.rhs);
                 self.gen_expr(&binexpr.lhs);
-                self.push_out("xor", "rdx, rdx");
+                self.write_instruction("xor", "rdx, rdx");
                 self.pop("rax");
                 self.pop("rbx");
-                self.push_out("div", "rbx");
+                self.write_instruction("div", "rbx");
                 self.push("rax");
             }
         }
     }
 
-    fn push_out(&mut self, instruction: &str, operation: &str) {
+    fn write_instruction(&mut self, instruction: &str, operation: &str) {
         self.out
             .push_str(format!("      {:<6}{}\n", instruction, operation).as_str());
     }
 
     /// TODO for now only 64 bit registers else stuff probably breaks in multiple places
     fn push(&mut self, register: &str) {
-        self.push_out("push", register);
+        self.write_instruction("push", register);
         self.stack_size += 1; // 8 bytes (64 bit register)
     }
 
     /// TODO for now only 64 bit registers else stuff probably breaks in multiple places
     fn pop(&mut self, register: &str) {
-        self.push_out("pop", register);
+        self.write_instruction("pop", register);
         self.stack_size -= 1;
+    }
+
+    fn create_label(&mut self, labelname: &str) -> String {
+        let count = self.labels.entry(labelname.to_string()).or_insert(0);
+        *count += 1;
+        return format!("{}{}", labelname, count);
     }
 }

@@ -96,6 +96,11 @@ pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
                     t_type: TokenType::T_INT,
                     value: None,
                 })
+            } else if syntax == IF.syntax {
+                tokens.push(Token {
+                    t_type: IF.t_type,
+                    value: None,
+                })
             } else {
                 tokens.push(Token {
                     t_type: TokenType::T_IDENT,
@@ -162,6 +167,16 @@ pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
             } else if syntax == CLOSE_PAR.syntax {
                 tokens.push(Token {
                     t_type: CLOSE_PAR.t_type,
+                    value: None,
+                })
+            } else if syntax == OPEN_CUR.syntax {
+                tokens.push(Token {
+                    t_type: OPEN_CUR.t_type,
+                    value: None,
+                })
+            } else if syntax == CLOSE_CUR.syntax {
+                tokens.push(Token {
+                    t_type: CLOSE_CUR.t_type,
                     value: None,
                 })
             } else {

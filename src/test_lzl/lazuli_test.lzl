@@ -9,5 +9,16 @@ int zet = 47;
 int z = ____10 + 3*8 / 2 - 5 + 30;
 z = (7+3) * 3;
 int y = 7+3*3;
+{
+    a = 123;
+    int inside = 5;
+}
+int inside = 10;
 
-ret y;
+a = 9999;
+if (0)
+{
+    a = 987;
+}
+
+ret a;

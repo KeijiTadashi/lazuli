@@ -23,6 +23,7 @@ pub enum TokenType {
     // Keywords (words)
     T_RETURN,
     T_INT,
+    T_IF,
 
     // Keywords (symbols)
     T_EQ,
@@ -34,6 +35,8 @@ pub enum TokenType {
     T_UNDERSCORE,
     T_OPEN_PAR,
     T_CLOSE_PAR,
+    T_OPEN_CUR,
+    T_CLOSE_CUR,
 
     // Values without const keyword
     T_INT_LIT,
@@ -57,6 +60,11 @@ pub const RETURN: Keyword = Keyword {
 pub const INT: Keyword = Keyword {
     syntax: "int",
     t_type: TokenType::T_INT,
+};
+
+pub const IF: Keyword = Keyword {
+    syntax: "if",
+    t_type: TokenType::T_IF,
 };
 
 // Keywords (symbols)
@@ -103,6 +111,16 @@ pub const OPEN_PAR: Keyword = Keyword {
 pub const CLOSE_PAR: Keyword = Keyword {
     syntax: ")",
     t_type: TokenType::T_CLOSE_PAR,
+};
+
+pub const OPEN_CUR: Keyword = Keyword {
+    syntax: "{",
+    t_type: TokenType::T_OPEN_CUR,
+};
+
+pub const CLOSE_CUR: Keyword = Keyword {
+    syntax: "}",
+    t_type: TokenType::T_CLOSE_CUR,
 };
 
 // impl fmt::Display for TokenType {

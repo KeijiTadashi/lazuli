@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 use std::rc::Rc;
 
+/* #region Program */
 #[derive(Debug)]
 pub struct NodeProg {
     pub stmts: Vec<Rc<NodeStmt>>,
@@ -11,6 +12,20 @@ impl NodeProg {
         NodeProg { stmts: Vec::new() }
     }
 }
+/* #endregion */
+
+/* #region Scope */
+#[derive(Debug)]
+pub struct NodeScope {
+    pub stmts: Vec<Rc<NodeStmt>>,
+}
+
+impl NodeScope {
+    pub fn new() -> NodeScope {
+        NodeScope { stmts: Vec::new() }
+    }
+}
+/* #endregion */
 
 /* #region Statments */
 #[derive(Default, Debug)]
@@ -19,6 +34,8 @@ pub enum VarStmt {
     NONE,
     RET(Rc<NodeStmtRet>),
     ASSIGN(Rc<NodeStmtAssign>),
+    SCOPE(Rc<NodeScope>),
+    IF(Rc<NodeStmtIf>),
     // ASSIGN2(NodeStmtAssign),
 }
 
@@ -61,6 +78,21 @@ impl NodeStmtAssign {
             var_type: Default::default(),
             ident: String::new(),
             expr: NodeExpr::new().into(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct NodeStmtIf {
+    pub expr: Rc<NodeExpr>,
+    pub scope: Rc<NodeScope>,
+}
+
+impl NodeStmtIf {
+    pub fn new() -> NodeStmtIf {
+        NodeStmtIf {
+            expr: NodeExpr::new().into(),
+            scope: NodeScope::new().into(),
         }
     }
 }
