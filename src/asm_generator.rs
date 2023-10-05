@@ -138,13 +138,25 @@ impl AsmGenerator {
                 self.gen_scope(&var_stmt);
             }
             VarStmt::IF(var_stmt) => {
+                let lbl = self.create_label("if");
                 self.gen_expr(&var_stmt.expr);
                 self.pop("rax");
-                let lbl = self.create_label("if");
                 self.write_instruction("cmp", "rax, 0");
                 self.write_instruction("je", &lbl);
                 self.gen_scope(&var_stmt.scope);
                 self.out.push_str(format!("{}:\n", lbl).as_str());
+            }
+            VarStmt::WHILE(var_stmt) => {
+                let lbl_start = self.create_label("while_start");
+                let lbl_end = self.create_label("while_end");
+                self.out.push_str(format!("{}:\n", &lbl_start).as_str());
+                self.gen_expr(&var_stmt.expr);
+                self.pop("rax");
+                self.write_instruction("cmp", "rax, 0");
+                self.write_instruction("je", &lbl_end);
+                self.gen_scope(&var_stmt.scope);
+                self.write_instruction("jmp", &lbl_start);
+                self.out.push_str(format!("{}:\n", lbl_end).as_str());
             }
         }
     }

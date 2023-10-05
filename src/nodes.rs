@@ -36,6 +36,7 @@ pub enum VarStmt {
     ASSIGN(Rc<NodeStmtAssign>),
     SCOPE(Rc<NodeScope>),
     IF(Rc<NodeStmtIf>),
+    WHILE(Rc<NodeStmtWhile>),
     // ASSIGN2(NodeStmtAssign),
 }
 
@@ -91,6 +92,21 @@ pub struct NodeStmtIf {
 impl NodeStmtIf {
     pub fn new() -> NodeStmtIf {
         NodeStmtIf {
+            expr: NodeExpr::new().into(),
+            scope: NodeScope::new().into(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct NodeStmtWhile {
+    pub expr: Rc<NodeExpr>,
+    pub scope: Rc<NodeScope>,
+}
+
+impl NodeStmtWhile {
+    pub fn new() -> NodeStmtWhile {
+        NodeStmtWhile {
             expr: NodeExpr::new().into(),
             scope: NodeScope::new().into(),
         }

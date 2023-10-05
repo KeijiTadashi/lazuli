@@ -24,6 +24,7 @@ pub enum TokenType {
     T_RETURN,
     T_INT,
     T_IF,
+    T_WHILE,
 
     // Keywords (symbols)
     T_EQ,
@@ -51,7 +52,7 @@ pub fn bin_prec(token_type: &TokenType) -> Option<u8> {
     };
 }
 
-// Keywords (words)
+/* #region Keywords (words) */
 pub const RETURN: Keyword = Keyword {
     syntax: "ret",
     t_type: TokenType::T_RETURN,
@@ -67,7 +68,13 @@ pub const IF: Keyword = Keyword {
     t_type: TokenType::T_IF,
 };
 
-// Keywords (symbols)
+pub const WHILE: Keyword = Keyword {
+    syntax: "while",
+    t_type: TokenType::T_WHILE,
+};
+/* #endregion */
+
+/* #region Keywords (symbols) */
 pub const EQ: Keyword = Keyword {
     syntax: "=",
     t_type: TokenType::T_EQ,
@@ -122,6 +129,7 @@ pub const CLOSE_CUR: Keyword = Keyword {
     syntax: "}",
     t_type: TokenType::T_CLOSE_CUR,
 };
+/* #endregion */
 
 // impl fmt::Display for TokenType {
 //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

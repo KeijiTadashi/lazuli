@@ -101,6 +101,11 @@ pub fn tokenize(path_to_file: Rc<str>) -> Result<Vec<Token>, u8> {
                     t_type: IF.t_type,
                     value: None,
                 })
+            } else if syntax == WHILE.syntax {
+                tokens.push(Token {
+                    t_type: WHILE.t_type,
+                    value: None,
+                })
             } else {
                 tokens.push(Token {
                     t_type: TokenType::T_IDENT,

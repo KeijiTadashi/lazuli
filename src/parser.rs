@@ -28,11 +28,7 @@ impl Parser {
         printd("Started parse".to_owned(), DebugType::MESSAGE);
         while let Some(peeked) = self.peek() {
             printd(format!("Peek in prog: {:?}", peeked), DebugType::NONE);
-            let stmt = self.parse_stmt();
-            match stmt {
-                Ok(n) => prog.stmts.push(n),
-                Err(e) => return Err(e),
-            }
+            prog.stmts.push(self.parse_stmt()?);
         }
         return Ok(prog);
     }
@@ -47,21 +43,17 @@ impl Parser {
             );
             if peeked.t_type == T_RETURN {
                 self.next();
-                let mut stmt_ret = NodeStmtRet::new();
-                match self.parse_expr(None) {
-                    Ok(n) => stmt_ret.expr = n.into(),
-                    Err(e) => return Err(e),
-                }
-                match self.try_next(T_SEMI) {
-                    Some(_) => {
-                        stmt.var = VarStmt::RET(stmt_ret.into());
+                stmt.var = VarStmt::RET(
+                    NodeStmtRet {
+                        expr: self.parse_expr(None)?,
                     }
-                    None => {
-                        return Err(print_error(
-                            Some(WEIRD_ERROR),
-                            Some("Expected ';' after 'ret [expr]'".to_owned()),
-                        ))
-                    }
+                    .into(),
+                );
+                if self.try_next(T_SEMI).is_none() {
+                    return Err(print_error(
+                        Some(WEIRD_ERROR),
+                        Some("Expected ';' after 'ret [expr]'".to_owned()),
+                    ));
                 }
             } else if peeked.t_type == T_INT {
                 self.next();
@@ -106,12 +98,7 @@ impl Parser {
                     }
                     i += 1;
                 }
-                match self.parse_expr(None) {
-                    Ok(n) => {
-                        stmt_int.expr = n.into();
-                    }
-                    Err(e) => return Err(e),
-                };
+                stmt_int.expr = self.parse_expr(None)?.into();
                 match self.try_next(T_SEMI) {
                     Some(_) => {
                         stmt.var = VarStmt::ASSIGN(stmt_int.into());
@@ -132,12 +119,8 @@ impl Parser {
                 }
                 // TODO type checking of expression and variable type
 
-                match self.parse_expr(None) {
-                    Ok(n) => {
-                        stmt_ident.expr = n.into();
-                    }
-                    Err(e) => return Err(e),
-                };
+                stmt_ident.expr = self.parse_expr(None)?.into();
+
                 match self.try_next(T_SEMI) {
                     Some(_) => {
                         stmt.var = VarStmt::ASSIGN(stmt_ident.into());
@@ -150,22 +133,25 @@ impl Parser {
                     }
                 }
             } else if peeked.t_type == T_OPEN_CUR {
-                match self.parse_scope() {
-                    Ok(n) => stmt.var = VarStmt::SCOPE(n.into()),
-                    Err(e) => return Err(e),
-                }
+                stmt.var = VarStmt::SCOPE(self.parse_scope()?.into());
             } else if peeked.t_type == T_IF {
                 self.next();
-                let mut stmt_if = NodeStmtIf::new();
-                match self.parse_expr(None) {
-                    Ok(n) => stmt_if.expr = n,
-                    Err(e) => return Err(e),
-                }
-                match self.parse_scope() {
-                    Ok(n) => stmt_if.scope = n,
-                    Err(e) => return Err(e),
-                }
-                stmt.var = VarStmt::IF(stmt_if.into());
+                stmt.var = VarStmt::IF(
+                    NodeStmtIf {
+                        expr: self.parse_expr(None)?,
+                        scope: self.parse_scope()?,
+                    }
+                    .into(),
+                );
+            } else if peeked.t_type == T_WHILE {
+                self.next();
+                stmt.var = VarStmt::WHILE(
+                    NodeStmtWhile {
+                        expr: self.parse_expr(None)?,
+                        scope: self.parse_scope()?,
+                    }
+                    .into(),
+                );
             } else {
                 return Err(print_error(
                     Some(WEIRD_ERROR),
@@ -191,11 +177,7 @@ impl Parser {
                 self.next();
                 return Ok(scope.into());
             }
-            let stmt = self.parse_stmt();
-            match stmt {
-                Ok(n) => scope.stmts.push(n),
-                Err(e) => return Err(e),
-            }
+            scope.stmts.push(self.parse_stmt()?);
         }
         return Err(print_error(
             Some(WEIRD_ERROR),
@@ -204,23 +186,12 @@ impl Parser {
     }
 
     fn parse_expr(self: &'_ mut Self, min_precedence: Option<u8>) -> Result<Rc<NodeExpr>, u8> {
+        printd(format!("Peek in expr: {:?}", self.peek()), DebugType::NONE);
         let mut expr_lhs = NodeExpr::new();
 
         let min_prec = min_precedence.unwrap_or(0);
 
-        let term_lhs = self.parse_term();
-
-        // printd(
-        //     format!("expr: {:?}||term_lhs: {:?}", self.peek(), term_lhs),
-        //     crate::global::DebugType::MESSAGE,
-        // );
-        match term_lhs {
-            Err(e) => return Err(e),
-            Ok(n) => {
-                printd(format!("Peek in expr: {:?}", n), DebugType::NONE);
-                expr_lhs.var = VarExpr::TERM(n.into());
-            }
-        }
+        expr_lhs.var = VarExpr::TERM(self.parse_term()?.into());
 
         loop {
             let prec: Option<u8>;
@@ -239,39 +210,42 @@ impl Parser {
                 None => break,
             }
             let next_min_prec: u8 = prec.unwrap() + 1;
-            let expr_rhs = self.parse_expr(Some(next_min_prec));
+            let expr_rhs = self.parse_expr(Some(next_min_prec))?;
 
-            match expr_rhs {
-                Ok(n) => {
-                    let mut expr = NodeBinExpr::new();
-                    let mut expr_lhs_new = NodeExpr::new();
+            let mut expr = NodeBinExpr::new();
+            let mut expr_lhs_new = NodeExpr::new();
 
-                    match expr_lhs.var {
-                        VarExpr::BIN(l) => expr_lhs_new.var = VarExpr::BIN(l.into()),
-                        VarExpr::TERM(l) => expr_lhs_new.var = VarExpr::TERM(l.into()),
-                        _ => {
-                            return Err(print_error(
-                                Some(WEIRD_ERROR),
-                                Some(format!("NOT IMPLEMENTED: {:?}", expr_lhs).to_owned()),
-                            ))
-                        }
-                    }
-
-                    expr.lhs = expr_lhs_new.into();
-                    expr.rhs = n.into();
-
-                    match operation.t_type {
-                        T_PLUS => expr.var = VarBinExpr::ADD,
-                        T_MINUS => expr.var = VarBinExpr::SUB,
-                        T_FSLASH => expr.var = VarBinExpr::DIV,
-                        T_STAR => expr.var = VarBinExpr::MUL,
-                        _ => return Err(print_error(Some(WEIRD_ERROR), Some("Shouldn't be able to get here, undifined binary expresion operator".to_owned())))
-                    }
-
-                    expr_lhs.var = VarExpr::BIN(expr.into());
+            match expr_lhs.var {
+                VarExpr::BIN(l) => expr_lhs_new.var = VarExpr::BIN(l.into()),
+                VarExpr::TERM(l) => expr_lhs_new.var = VarExpr::TERM(l.into()),
+                _ => {
+                    return Err(print_error(
+                        Some(WEIRD_ERROR),
+                        Some(format!("NOT IMPLEMENTED: {:?}", expr_lhs).to_owned()),
+                    ))
                 }
-                Err(e) => return Err(e),
             }
+
+            expr.lhs = expr_lhs_new.into();
+            expr.rhs = expr_rhs.into();
+
+            match operation.t_type {
+                T_PLUS => expr.var = VarBinExpr::ADD,
+                T_MINUS => expr.var = VarBinExpr::SUB,
+                T_FSLASH => expr.var = VarBinExpr::DIV,
+                T_STAR => expr.var = VarBinExpr::MUL,
+                _ => {
+                    return Err(print_error(
+                        Some(WEIRD_ERROR),
+                        Some(
+                            "Shouldn't be able to get here, undifined binary expresion operator"
+                                .to_owned(),
+                        ),
+                    ))
+                }
+            }
+
+            expr_lhs.var = VarExpr::BIN(expr.into());
         }
 
         return Ok(expr_lhs.into());
@@ -288,36 +262,38 @@ impl Parser {
         );
 
         if let Some(int_lit) = self.try_next(T_INT_LIT) {
-            let mut term_int_lit = NodeTermIntLit::new();
-            term_int_lit.value = int_lit.value.unwrap();
-            term.var = VarTerm::INT_LIT(term_int_lit.into());
+            term.var = VarTerm::INT_LIT(
+                NodeTermIntLit {
+                    value: int_lit.value.unwrap(),
+                }
+                .into(),
+            );
         } else if let Some(ident) = self.try_next(T_IDENT) {
-            let mut term_ident = NodeTermIdent::new();
-            term_ident.ident = ident.value.unwrap();
-            term.var = VarTerm::IDENT(term_ident.into());
+            term.var = VarTerm::IDENT(
+                NodeTermIdent {
+                    ident: ident.value.unwrap(),
+                }
+                .into(),
+            );
         } else if self.try_next(T_UNDERSCORE).is_some() {
-            let mut term_neg = NodeTermNeg::new();
-            match self.parse_term() {
-                Ok(n) => {
-                    term_neg.term = n;
-                    term.var = VarTerm::NEG(term_neg.into());
+            term.var = VarTerm::NEG(
+                NodeTermNeg {
+                    term: self.parse_term()?,
                 }
-                Err(e) => return Err(e),
-            }
+                .into(),
+            );
         } else if self.try_next(T_OPEN_PAR).is_some() {
-            let mut term_par = NodeTermPar::new();
-            match self.parse_expr(None) {
-                Ok(n) => {
-                    if self.try_next(T_CLOSE_PAR).is_none() {
-                        return Err(print_error(
-                            Some(WEIRD_ERROR),
-                            Some(format!("Expexted ')'.").to_owned()),
-                        ));
-                    }
-                    term_par.expr = n.clone();
-                    term.var = VarTerm::PAR(term_par.into());
+            term.var = VarTerm::PAR(
+                NodeTermPar {
+                    expr: self.parse_expr(None)?,
                 }
-                Err(e) => return Err(e),
+                .into(),
+            );
+            if self.try_next(T_CLOSE_PAR).is_none() {
+                return Err(print_error(
+                    Some(WEIRD_ERROR),
+                    Some(format!("Expexted ')'.").to_owned()),
+                ));
             }
         } else {
             return Err(print_error(

@@ -21,4 +21,10 @@ if (0)
     a = 987;
 }
 
+int iLoop = 9;
+while iLoop {
+    a = a - 1;
+    iLoop = iLoop -1;
+}
+
 ret a;
